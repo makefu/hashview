@@ -64,14 +64,24 @@ def setup_defaults_if_needed():
     from hashview.models import db
 
     try:
-        logger.info('Upgrading Database if needed Progressing.')
         import alembic.command
+        from sqlalchemy import inspect as _sa_inspect
         migrate_ext = current_app.extensions['migrate']
         config = migrate_ext.migrate.get_config(migrate_ext.directory)
         # set configure_logger so that migrations/env.py doesn't override the logging setup
         config.attributes['configure_logger'] = False
-        alembic.command.upgrade(config, 'head')
-        logger.info('Upgrading Database if needed is Complete.')
+        # The migration chain is drifted (models ahead of migrations) and not
+        # MySQL-clean. For a fresh DB, build the schema straight from the models
+        # and stamp it as current; only replay migrations on an existing schema
+        # (upgrade path for pre-existing installs).
+        if _sa_inspect(db.engine).has_table('users'):
+            logger.info('Existing schema detected; running migrations.')
+            alembic.command.upgrade(config, 'head')
+        else:
+            logger.info('Fresh database; creating schema from models.')
+            db.create_all()
+            alembic.command.stamp(config, 'head')
+        logger.info('Database schema ready.')
     except Exception:
         logger.exception('Upgrading Database failed.')
 
