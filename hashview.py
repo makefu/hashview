@@ -434,7 +434,9 @@ def cli(args) -> int:
             werkzeug_logger.setLevel(logging.ERROR)
 
         if parsed_args.no_ssl:
-            app.run(debug=parsed_args.debug)
+            app.run(host=os.environ.get('HASHVIEW_HOST', '127.0.0.1'),
+                    port=int(os.environ.get('HASHVIEW_PORT', '5000')),
+                    debug=parsed_args.debug)
 
         else:
             app.run(
