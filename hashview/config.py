@@ -1,4 +1,5 @@
 """Manage parsing of Config and loading into Config class"""
+import os
 import secrets
 from configparser import ConfigParser
 file_config = ConfigParser()
@@ -13,7 +14,7 @@ class Config:
     SERVER_NAME = file_config['SERVER']['SERVER_NAME']
 
     # MYSQL Config
-    SQLALCHEMY_DATABASE_URI = (
+    SQLALCHEMY_DATABASE_URI = os.environ.get('HASHVIEW_DATABASE_URI') or (
         'mysql+mysqlconnector://'
         + file_config['database']['username'] + ':'
         + file_config['database']['password'] + '@'
