@@ -1,4 +1,5 @@
 import logging
+import os
 import datetime
 
 from flask import Flask
@@ -144,7 +145,7 @@ def jinja_hex_decode(text):
     return bytes.fromhex(text).decode('latin-1')
 
 
-def create_app():
+def create_app(testing=False, config_overrides=None):
     app = Flask(__name__)
     # Templates use the .html.j2 extension, which Flask's default
     # select_autoescape() does not cover. Without this, every {{ var }}
@@ -188,6 +189,13 @@ def create_app():
 
     from hashview.config import Config
     app.config.from_object(Config)
+    if testing:
+        app.config['TESTING'] = True
+    if config_overrides:
+        app.config.update(config_overrides)
+    _skip_setup = app.config.get('HASHVIEW_SKIP_SETUP', os.environ.get('HASHVIEW_SKIP_SETUP'))
+    _skip_gui = app.config.get('HASHVIEW_SKIP_GUI_SETUP', os.environ.get('HASHVIEW_SKIP_GUI_SETUP'))
+    _disable_scheduler = app.config.get('HASHVIEW_DISABLE_SCHEDULER', os.environ.get('HASHVIEW_DISABLE_SCHEDULER'))
 
     from hashview.models import db
     db.init_app(app)
@@ -198,7 +206,8 @@ def create_app():
 
     from hashview.scheduler import scheduler
     scheduler.init_app(app)
-    scheduler.start()
+    if not _disable_scheduler:
+        scheduler.start()
 
     from hashview.users.routes import bcrypt
     bcrypt.init_app(app)
@@ -249,9 +258,11 @@ def create_app():
     app.add_template_filter(jinja_hex_decode)
     app.add_template_global(get_application_version, get_application_version.__name__)
 
-    with app.app_context():
-        setup_defaults_if_needed()
+    if not _skip_setup:
+        with app.app_context():
+            setup_defaults_if_needed()
 
-    app.before_request(do_gui_setup_if_needed)
+    if not _skip_gui:
+        app.before_request(do_gui_setup_if_needed)
 
     return app
