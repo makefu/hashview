@@ -229,9 +229,10 @@ class Hashes(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     sub_ciphertext = db.Column(db.String(32), nullable=False, index=True)
-    # Max VARCHAR size for utf8mb4 row; switch to TEXT/BLOB later if needed.
-    # See https://sheeri.org/max-varchar-size/
-    ciphertext = db.Column(db.String(16383), nullable=False)
+    # Stored off-page as TEXT: a VARCHAR(16383) under utf8mb4 is ~65534 bytes,
+    # which on its own overflows MySQL's 65535-byte in-row limit and makes
+    # create_all() abort. The column is unindexed, so TEXT costs nothing here.
+    ciphertext = db.Column(db.Text, nullable=False)
     hash_type = db.Column(db.Integer, nullable=False, index=True)
     cracked = db.Column(db.Boolean, nullable=False)
     recovered_at = db.Column(db.DateTime, nullable=True)
