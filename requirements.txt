@@ -1,4 +1,4 @@
-sqlalchemy==1.4.27
+sqlalchemy
 flask
 flask-wtf
 email_validator
