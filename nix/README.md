@@ -14,9 +14,11 @@ and a `services.hashview` NixOS module.
 | `checks.<system>.{unit,integration,e2e}` | Test tiers (see [Tests](#tests)) |
 | `devShells.<system>.default` | Test Python env + hashcat |
 
-The app is not relocatable and targets an older stack; the flake applies its
-build-time source patches in `overlay.nix` (kept out of the source tree). See the
-packaging commit message for the rationale.
+The app targets an older stack and needed a handful of environment/headless
+hooks plus a command-injection fix to package cleanly. Those now live directly
+in the source tree as individual commits (proposed upstream), so `overlay.nix`
+just builds a clean checkout. See the packaging commit message for the
+rationale.
 
 ## Quick start
 
