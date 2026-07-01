@@ -8,12 +8,25 @@ from packaging import version
 from datetime import datetime, timedelta
 import hashview
 import os
+import subprocess
 import json
 import secrets
 import hashlib
 import binascii
 
 api = Blueprint('api', __name__)
+
+
+def _is_safe_control_filename(name, required_ext=None):
+    # Agent-facing download endpoints build a gzip argv from this name, so
+    # reject path traversal and shell metacharacters via a strict allow-list.
+    if not name or name in ('.', '..'):
+        return False
+    if not all(c.isalnum() or c in '._-' for c in name):
+        return False
+    if required_ext is not None and not name.endswith(required_ext):
+        return False
+    return True
 
 #
 # Yeah, i know its bad and should be converted to a legit REST API.
@@ -319,11 +332,12 @@ def v1_api_get_rules_download(rules_id):
     update_heartbeat(request.cookies.get('uuid'))
     rules = Rules.query.get(rules_id)
     rules_name = rules.path.split('/')[-1]
-    cmd = "gzip -9 -k -c hashview/control/rules/" + rules_name + " > hashview/control/tmp/" + rules_name + ".gz"
-
-    # What command injection?!
-    # TODO
-    os.system(cmd)
+    if not _is_safe_control_filename(rules_name, '.rule'):
+        return 'Invalid rules filename', 400
+    src = os.path.join('hashview/control/rules', rules_name)
+    dest = os.path.join('hashview/control/tmp', rules_name + '.gz')
+    with open(dest, 'wb') as _out:
+        subprocess.run(['gzip', '-9', '-k', '-c', src], stdout=_out, check=True)
     return send_from_directory('control/tmp', rules_name + '.gz', mimetype = 'application/octet-stream')
 
 # Provide wordlist info (really should be plural)
@@ -349,12 +363,13 @@ def v1_api_get_wordlist_download(wordlist_id):
     update_heartbeat(request.cookies.get('uuid'))
     wordlist = Wordlists.query.get(wordlist_id)
     wordlist_name = wordlist.path.split('/')[-1]
+    if not _is_safe_control_filename(wordlist_name):
+        return 'Invalid wordlist filename', 400
     random_hex = secrets.token_hex(8)
-    cmd = "gzip -9 -k -c hashview/control/wordlists/" + wordlist_name + " > hashview/control/tmp/" + wordlist_name + "_" + random_hex + ".gz"
-
-    # What command injection?!
-    # TODO
-    os.system(cmd)
+    src = os.path.join('hashview/control/wordlists', wordlist_name)
+    dest = os.path.join('hashview/control/tmp', wordlist_name + "_" + random_hex + ".gz")
+    with open(dest, 'wb') as _out:
+        subprocess.run(['gzip', '-9', '-k', '-c', src], stdout=_out, check=True)
     return send_from_directory('control/tmp', wordlist_name + "_" + random_hex + ".gz", mimetype = 'application/octet-stream')
 
 # Update Dynamic Wordlist
