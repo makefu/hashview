@@ -10,15 +10,18 @@ def heartbeat(agent_status, hc_status):
     }
 
     response = http.post('/v1/agents/heartbeat', json.loads(json.dumps(message)))
-    decoded_response = json.loads(response)
-    if decoded_response['type'] == 'message' and decoded_response['status'] == 200:
+    try:
+        decoded_response = json.loads(response)
+    except (ValueError, TypeError):
+        # Server not ready (setup redirect / restart) - retry on next loop.
+        return {'msg': 'Retry'}
+    if decoded_response.get('type') == 'message' and decoded_response.get('status') == 200:
         return decoded_response
-    elif decoded_response['type'] == 'message' and decoded_response['status'] == 426:
+    elif decoded_response.get('type') == 'message' and decoded_response.get('status') == 426:
         print('Our agent version is older than the servers. You need to upgrade your agent before continuing.')
         exit()
     else:
-        print('we got an unexpected response type')
-        print(str(decoded_response['type']))
+        return {'msg': 'Retry'}
 
 def server_settings():
     response = http.get('/v1/admin/settings')
