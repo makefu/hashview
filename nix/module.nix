@@ -370,7 +370,11 @@ in
         secret_file=${if cfg.web.secretKeyFile != null then toString cfg.web.secretKeyFile else "\"$wd/secret_key\""}
         ${lib.optionalString (cfg.web.secretKeyFile == null) ''
           if [ ! -f "$wd/secret_key" ]; then
-            (umask 077; tr -dc 'a-f0-9' < /dev/urandom | head -c 64 > "$wd/secret_key")
+            # 64 hex chars from 32 bytes. Read a bounded amount with od so the
+            # reader terminates on its own; piping /dev/urandom into `head -c`
+            # closes the pipe early and leaves `tr` killed by SIGPIPE, which
+            # trips pipefail and fails the whole pre-start.
+            (umask 077; od -An -tx1 -N32 /dev/urandom | tr -d ' \n' > "$wd/secret_key")
           fi
         ''}
         rm -f "$wd/hashview/config.conf"
