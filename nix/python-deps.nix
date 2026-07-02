@@ -1,8 +1,23 @@
-# Python package-set overrides: add the two runtime deps that are absent from
+# Python package-set overrides: add the runtime deps that are absent from
 # nixpkgs. Everything else (Flask stack, SQLAlchemy 2.x, mysql-connector) comes
 # straight from nixpkgs - the app is upgraded to match those versions rather
 # than pinned to its historical requirements.txt.
 self: super: {
+
+  # flask-apscheduler only entered nixpkgs after the 25.05/26.05 releases, so
+  # package it here to keep the module buildable on those stable channels.
+  flask-apscheduler = self.buildPythonPackage rec {
+    pname = "Flask-APScheduler";
+    version = "1.13.1";
+    format = "setuptools";
+    src = self.fetchPypi {
+      inherit pname version;
+      sha256 = "1nh7ssdr8dqdplamfqh8dmfbfy6sfpyf9c30cfvkkcvg09pq8adr";
+    };
+    propagatedBuildInputs = with self; [ flask apscheduler python-dateutil ];
+    doCheck = false;
+    pythonImportsCheck = [ "flask_apscheduler" ];
+  };
 
   bcrypt-flask = self.buildPythonPackage rec {
     pname = "Bcrypt-Flask";
