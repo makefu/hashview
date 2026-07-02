@@ -3,6 +3,14 @@
 let
   cfg = config.services.hashview;
 
+  # The hashview packages (hashview-web, hashview-agent, ...) live in this
+  # flake's overlay. Apply it to the caller's pkgs here so the package option
+  # defaults resolve without the consumer having to wire up the overlay
+  # themselves. Relying on config.nixpkgs.overlays would not help: that feeds
+  # back into the very `pkgs` module argument used to evaluate these defaults,
+  # so the packages would still be missing at defaults-evaluation time.
+  hashviewPkgs = pkgs.extend (import ./overlay.nix);
+
   stateDir = "/var/lib/hashview";
   webWd = "${stateDir}/web";
   agentWd = "${stateDir}/agent";
@@ -96,7 +104,7 @@ in
       };
       package = lib.mkOption {
         type = lib.types.package;
-        default = pkgs.hashview-web;
+        default = hashviewPkgs.hashview-web;
         defaultText = lib.literalExpression "pkgs.hashview-web";
         description = "Hashview web server package.";
       };
@@ -159,7 +167,7 @@ in
       };
       package = lib.mkOption {
         type = lib.types.package;
-        default = pkgs.hashview-agent;
+        default = hashviewPkgs.hashview-agent;
         defaultText = lib.literalExpression "pkgs.hashview-agent";
         description = "Hashview agent package.";
       };
