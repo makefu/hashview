@@ -11,7 +11,7 @@ let
 
   hashviewPython = final.python3.override {
     self = hashviewPython;
-    packageOverrides = import ./python-deps.nix;
+    packageOverrides = import ./python-deps.nix { inherit lib; };
   };
 
   runtimePyDeps = ps: with ps; [

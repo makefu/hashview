@@ -2,22 +2,17 @@
 # nixpkgs. Everything else (Flask stack, SQLAlchemy 2.x, mysql-connector) comes
 # straight from nixpkgs - the app is upgraded to match those versions rather
 # than pinned to its historical requirements.txt.
-self: super: {
-
-  # flask-apscheduler only entered nixpkgs after the 25.05/26.05 releases, so
-  # package it here to keep the module buildable on those stable channels.
-  flask-apscheduler = self.buildPythonPackage rec {
-    pname = "Flask-APScheduler";
-    version = "1.13.1";
-    format = "setuptools";
-    src = self.fetchPypi {
-      inherit pname version;
-      sha256 = "1nh7ssdr8dqdplamfqh8dmfbfy6sfpyf9c30cfvkkcvg09pq8adr";
-    };
-    propagatedBuildInputs = with self; [ flask apscheduler python-dateutil ];
-    doCheck = false;
-    pythonImportsCheck = [ "flask_apscheduler" ];
-  };
+{ lib }:
+self: super:
+let
+  # flask-apscheduler only entered nixpkgs after the 26.05 release. Inject our
+  # own copy solely on releases at or before 26.05 (which lack it); on newer
+  # releases fall through to the nixpkgs-provided package instead of shadowing
+  # it. Unstable/git checkouts report a release newer than any stable, so they
+  # also take the nixpkgs package.
+  needsFlaskApscheduler = lib.versionAtLeast "26.05" lib.trivial.release;
+in
+{
 
   bcrypt-flask = self.buildPythonPackage rec {
     pname = "Bcrypt-Flask";
@@ -43,5 +38,19 @@ self: super: {
     propagatedBuildInputs = [ self.six ];
     doCheck = false;
     pythonImportsCheck = [ "transliterate" ];
+  };
+}
+// lib.optionalAttrs needsFlaskApscheduler {
+  flask-apscheduler = self.buildPythonPackage rec {
+    pname = "Flask-APScheduler";
+    version = "1.13.1";
+    format = "setuptools";
+    src = self.fetchPypi {
+      inherit pname version;
+      sha256 = "1nh7ssdr8dqdplamfqh8dmfbfy6sfpyf9c30cfvkkcvg09pq8adr";
+    };
+    propagatedBuildInputs = with self; [ flask apscheduler python-dateutil ];
+    doCheck = false;
+    pythonImportsCheck = [ "flask_apscheduler" ];
   };
 }
